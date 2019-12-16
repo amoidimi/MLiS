@@ -34,7 +34,7 @@ def clean_auto_data(brcancer):
         brcancer[column] = pd.to_numeric(brcancer[column])
 
     return brcancer
-
+# New comment
 brcancer = clean_auto_data(brcancer)
 print(brcancer.columns)
 brcancer.head()
