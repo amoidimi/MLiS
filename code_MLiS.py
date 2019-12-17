@@ -10,13 +10,21 @@ Created on Mon Dec 16 01:17:50 2019
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+import matplotlib.cm as cm
 import seaborn as sns
 import numpy.random as nr
 import math
 from sklearn import preprocessing
 import sklearn.model_selection as ms
+from sklearn import linear_model
 import sklearn.metrics as sklm
+import sklearn.decomposition as skde
+from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.metrics import silhouette_score
+from mpl_toolkits import mplot3d
 
+count()
 brcancer = pd.read_csv('data.csv')
 cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness',
         'mean_compactness', 'mean_concavity', 'mean_concave_points', 'mean_symmetry', 'mean_fractal_dimension',
@@ -24,7 +32,7 @@ cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoo
         'std_compactness', 'std_concavity', 'std_concave_points', 'std_symmetry', 'std_fractal_dimension',
         'worst_radius', 'worst_texture', 'worst_perimeter', 'worst_area', 'worst_smoothness',
         'worst_compactness', 'worst_concavity', 'worst_concave_points', 'worst_symmetry', 'worst_fractal_dimension']
-
+brcancer['Diagnosis'] = brcancer['Diagnosis'].map({'M':1,'B':0})
 
 def clean_auto_data(brcancer):
     cols = brcancer.columns
@@ -50,6 +58,7 @@ print(brcancer.columns)
 brcancer.head()
 brcancer.describe()
 brcancer.info()
+#sns.pairplot(brcancer[cols], palette="Set2", diag_kind="kde", size=2).map_upper(sns.kdeplot, cmap="Blues_d")
 
 #sns.pairplot(brcancer[cols], palette="Set2", diag_kind="kde", size=2).map_upper(sns.kdeplot, cmap="Blues_d")
 def plot_histogram(brcancer, cols, bins):
@@ -63,8 +72,7 @@ def plot_histogram(brcancer, cols, bins):
         plt.show()
 
 
-num_cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness',
-            'mean_compactness', 'mean_concavity', 'mean_concave_points', 'mean_symmetry', 'mean_fractal_dimension']
+
 plot_histogram(brcancer, cols, 10)
 
 
@@ -79,9 +87,8 @@ def plot_density_hist(brcancer, cols, bins, hist, name):
         plt.ylabel('Number of patients')
         plt.show()
         fig.savefig(name + col + '.png')
-
-
-plot_density_hist(brcancer, cols, bins=20, hist=True, name='density_')
+        
+plot_density_hist(brcancer,cols, bins = 20, hist = True,name='density_')
 
 
 def plot_scatter(brcancer, cols, col_y='mean_radius'):
@@ -96,7 +103,7 @@ def plot_scatter(brcancer, cols, col_y='mean_radius'):
         fig.savefig('scatterplot_' + col + '.png')
 
 
-plot_scatter(brcancer, num_cols)
+plot_scatter(brcancer,cols)
 
 plot_scatter(brcancer, ['mean_texture'], 'mean_perimeter')
 
@@ -113,7 +120,7 @@ def plot_scatter_t(brcancer, cols, col_y='mean_radius', alpha=1.0):
     # fig.savefig('scatterplot.png')
 
 
-plot_scatter_t(brcancer, num_cols, alpha=0.2)
+plot_scatter_t(brcancer,cols, alpha=0.2)
 
 
 def plot_desity_2d(brcancer, cols, col_y='mean_radius', kind='kde'):
@@ -124,9 +131,8 @@ def plot_desity_2d(brcancer, cols, col_y='mean_radius', kind='kde'):
         plt.ylabel(col_y)
         plt.show()
 
-
-plot_desity_2d(brcancer, num_cols)
-plot_desity_2d(brcancer, num_cols, kind='hex')
+plot_desity_2d(brcancer,cols)
+plot_desity_2d(brcancer,cols, kind='hex')
 
 
 def plot_scatter_shape(brcancer, cols, shape_col='Diagnosis', col_y='mean_radius', alpha=0.2):
@@ -145,7 +151,8 @@ def plot_scatter_shape(brcancer, cols, shape_col='Diagnosis', col_y='mean_radius
         plt.show()
 
 
-plot_scatter_shape(brcancer, num_cols)
+
+plot_scatter_shape(brcancer,cols)
 
 
 def cond_hists(df, plot_cols, grid_col):
@@ -158,7 +165,22 @@ def cond_hists(df, plot_cols, grid_col):
     return grid_col
 
 
-cond_hists(brcancer, num_cols, 'Diagnosis')
+cond_hists(brcancer,cols, 'Diagnosis')
+
+            
+plot_scatter_shape(brcancer,cols)
+
+#def cond_hists(df, plot_cols, grid_col):
+#    import matplotlib.pyplot as plt
+#    import seaborn as sns
+#    for col in plot_cols:
+#        grid1 = sns.FacetGrid(df, col=grid_col)
+#        grid1.map(plt.hist, col, alpha=.7)
+#        plt.savefig('cond_hist.png')
+#    return grid_col
+#
+#cond_hists(brcancer,cols, 'Diagnosis')
+
 
 cor_mat = brcancer.corr()
 cor_mat['mean_radius'].sort_values(ascending=False)
@@ -169,16 +191,126 @@ for col in cols:
         brcancer_sc[col] = np.log(brcancer[col])
 
 brcancer_sc.replace([np.inf, -np.inf], 0, inplace=True)
+
+brcancer_sc=brcancer
+for col in cols:
+    if (col != 'mean_symmetry' and col != 'mean_smoothness' and col!= 'worst_smoothness'):
+        brcancer_sc[col] = np.cbrt(brcancer[col])
+
 nr.seed(9988)
 Features = np.array(brcancer_sc)
 indx = range(Features.shape[0])
-indx = ms.train_test_split(indx, test_size=40)
-x_train = Features[indx[0], :]
-x_test = Features[indx[1], :]
+indx = ms.train_test_split(indx, test_size=171)
+
+x_train = Features[indx[0],2:]
+x_test = Features[indx[1],2:]
 
 # Rescale numeric features
 scaler = preprocessing.StandardScaler().fit(x_train[:, 2:])
 x_train[:, 2:] = scaler.transform(x_train[:, 2:])
 x_test[:, 2:] = scaler.transform(x_test[:, 2:])
+
 print(x_train.shape)
-plot_density_hist(x_train, cols, bins=20, hist=True, name='scaled_dens_')
+plot_density_hist(x_train,cols, bins=20, hist=True, name='scaled_dens_')
+
+pca_mod = skde.PCA()
+pca_comps = pca_mod.fit(x_train)
+pca_comps
+print(pca_comps.explained_variance_ratio_)
+print(np.sum(pca_comps.explained_variance_ratio_))
+
+def plot_explained(mod):
+    comps = mod.explained_variance_ratio_
+    x = range(len(comps))
+    x = [y + 1 for y in x]          
+    plt.plot(x,comps)
+
+plot_explained(pca_comps)
+pca_mod_5 = skde.PCA(n_components = 5)
+pca_mod_5.fit(x_train)
+Comps = pca_mod_5.transform(x_train)
+Comps.shape
+Comps_test=pca_mod_5.transform(x_test)
+
+km_models = []
+assignments_km = []
+assignments_test_km = []
+for i in range(2,5):
+    
+    kmeans_2 = KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001, 
+        precompute_distances='auto', verbose=0, random_state=None, copy_x=True, n_jobs=1, algorithm='auto')
+    assignments_km2 = kmeans_2.fit_predict(Comps)
+    test_values = kmeans_2.predict(Comps_test)
+    km_models.append(kmeans_2)
+    assignments_km.append(assignments_km2)
+    assignments_test_km.append(test_values)
+
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+ax1.scatter(Comps_test[:,0],Comps_test[:,1],c=assignments_test_km[0] , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.set_title('k-means clustering plot')
+
+ax2.scatter(Comps_test[:,0],Comps_test[:,1],c = brcancer['Diagnosis'][indx[1]], cmap = "jet", edgecolor = "None", alpha=0.35)
+ax2.set_title('Actual clusters')
+
+
+def plot_clusters(sample, assignment):
+    col_dic = {0:'blue',1:'red'}
+    colors = [col_dic[x] for x in assignment]
+    plt.scatter(sample[:,0],sample[:,1],color = colors)
+    plt.xlabel('Dimension 1')
+    plt.ylabel('Dimension 2')
+    plt.title('Sample data')
+    plt.show()
+
+plot_clusters(Comps, assignments_km[0])
+plot_clusters(Comps_test, assignments_test_km[0])
+
+agglomerative_2 = AgglomerativeClustering(n_clusters=2)
+assignments_ag2 = agglomerative_2.fit_predict(Comps)
+plot_clusters(Comps, assignments_ag2)
+
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+ax1.scatter(Comps[:,0],Comps[:,1],c=assignments_ag2 , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.set_title('k-means clustering plot')
+
+ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
+ax2.set_title('Actual clusters')
+
+def plot_WCSS_km(km_models, sample):
+    fig, ax = plt.subplots(1, 2, figsize=(12,5))
+    
+    ## Plot WCSS
+    wcss = [mod.inertia_ for mod in km_models]
+    print(wcss)
+    n_clusts = [x+1 for x in range(1,len(wcss) + 1)]
+    ax[0].bar(n_clusts, wcss)
+    ax[0].set_xlabel('Number of clusters')
+    ax[0].set_ylabel('WCSS')
+    
+    ## Plot BCSS
+    tss = np.sum(sample[:,0:1]**2, axis = 0)
+    print(tss)
+    ## Compute BCSS as TSS - WCSS
+    bcss = np.concatenate([tss - x for x in wcss]).ravel()
+    ax[1].bar(n_clusts, bcss)
+    ax[1].set_xlabel('Number of clusters')
+    ax[1].set_ylabel('BCSS')
+    plt.show()
+    
+
+plot_WCSS_km(km_models, Comps)
+
+
+def plot_sillohette(samples, assignments, x_lab = 'Number of clusters', start =2):
+    silhouette = [silhouette_score(samples[:,0:1], a) for a in assignments]
+    n_clusts = [x + start for x in range(0, len(silhouette))]
+    plt.bar(n_clusts, silhouette)
+    plt.xlabel(x_lab)
+    plt.ylabel('SC')
+    plt.show()
+
+plot_sillohette(Comps, assignments_km)
+###########################################################
+
