@@ -15,6 +15,8 @@ import matplotlib.cm as cm
 import seaborn as sns
 import numpy.random as nr
 import math
+
+from scipy.stats import mode
 from sklearn import preprocessing
 import sklearn.model_selection as ms
 from sklearn import linear_model
