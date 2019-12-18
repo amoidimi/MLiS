@@ -10,21 +10,18 @@ Created on Mon Dec 16 01:17:50 2019
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib as mpl
-import matplotlib.cm as cm
 import seaborn as sns
 import numpy.random as nr
 import math
-
+from sklearn import metrics
 from scipy.stats import mode
 from sklearn import preprocessing
 import sklearn.model_selection as ms
-from sklearn import linear_model
-import sklearn.metrics as sklm
 import sklearn.decomposition as skde
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score
-from mpl_toolkits import mplot3d
+from sklearn.metrics.cluster import contingency_matrix
+from sklearn.model_selection import cross_val_score
 
 brcancer = pd.read_csv('data.csv')
 cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness',
@@ -72,10 +69,7 @@ def plot_histogram(brcancer, cols, bins):
         ax.set_ylabel('Number of patients')
         plt.show()
 
-
-
-plot_histogram(brcancer, cols, 10)
-
+#plot_histogram(brcancer, cols, 10)
 
 def plot_density_hist(brcancer, cols, bins, hist, name):
     for i in range(0, len(cols)):
@@ -89,7 +83,7 @@ def plot_density_hist(brcancer, cols, bins, hist, name):
         plt.show()
         fig.savefig(name + col + '.png')
         
-plot_density_hist(brcancer,cols, bins = 20, hist = True,name='density_')
+#plot_density_hist(brcancer,cols, bins = 20, hist = True,name='density_')
 
 
 def plot_scatter(brcancer, cols, col_y='mean_radius'):
@@ -103,10 +97,9 @@ def plot_scatter(brcancer, cols, col_y='mean_radius'):
         plt.show()
         fig.savefig('scatterplot_' + col + '.png')
 
+#plot_scatter(brcancer,cols)
 
-plot_scatter(brcancer,cols)
-
-plot_scatter(brcancer, ['mean_texture'], 'mean_perimeter')
+#plot_scatter(brcancer, ['mean_texture'], 'mean_perimeter')
 
 
 def plot_scatter_t(brcancer, cols, col_y='mean_radius', alpha=1.0):
@@ -121,7 +114,7 @@ def plot_scatter_t(brcancer, cols, col_y='mean_radius', alpha=1.0):
     # fig.savefig('scatterplot.png')
 
 
-plot_scatter_t(brcancer,cols, alpha=0.2)
+#plot_scatter_t(brcancer,cols, alpha=0.2)
 
 
 def plot_desity_2d(brcancer, cols, col_y='mean_radius', kind='kde'):
@@ -132,8 +125,8 @@ def plot_desity_2d(brcancer, cols, col_y='mean_radius', kind='kde'):
         plt.ylabel(col_y)
         plt.show()
 
-plot_desity_2d(brcancer,cols)
-plot_desity_2d(brcancer,cols, kind='hex')
+#plot_desity_2d(brcancer,cols)
+#plot_desity_2d(brcancer,cols, kind='hex')
 
 
 def plot_scatter_shape(brcancer, cols, shape_col='Diagnosis', col_y='mean_radius', alpha=0.2):
@@ -153,7 +146,7 @@ def plot_scatter_shape(brcancer, cols, shape_col='Diagnosis', col_y='mean_radius
 
 
 
-plot_scatter_shape(brcancer,cols)
+#plot_scatter_shape(brcancer,cols)
 
 
 def cond_hists(df, plot_cols, grid_col):
@@ -166,10 +159,10 @@ def cond_hists(df, plot_cols, grid_col):
     return grid_col
 
 
-cond_hists(brcancer,cols, 'Diagnosis')
+#cond_hists(brcancer,cols, 'Diagnosis')
 
             
-plot_scatter_shape(brcancer,cols)
+#plot_scatter_shape(brcancer,cols)
 
 #def cond_hists(df, plot_cols, grid_col):
 #    import matplotlib.pyplot as plt
@@ -182,9 +175,6 @@ plot_scatter_shape(brcancer,cols)
 #
 #cond_hists(brcancer,cols, 'Diagnosis')
 
-
-cor_mat = brcancer.corr()
-cor_mat['mean_radius'].sort_values(ascending=False)
 brcancer_sc = pd.DataFrame()
 for col in cols:
     brcancer_sc[col] = brcancer[col]
@@ -246,19 +236,19 @@ for i in range(2,5):
     assignments_km.append(assignments_km2)
     assignments_test_km.append(test_values)
 
- def create_labels(assignments_km, brcancer_indx):
-     labels = np.zeros_like(assignments_km)
-     for i in range(2):
-         mask = (assignments_km == i)
+def create_labels(assign,brcancer_indx,num_labels):
+     labels = np.zeros_like(assign)
+     for i in range(num_labels):
+         mask = (assign == i)
          digits_mask = brcancer_indx[mask]
          labels[mask] = mode(digits_mask)[0]
      return labels
  
  #Training
- labels_training = create_labels(assignments_km[0], brcancer['Diagnosis'][indx[0]])
- labels_test = create_labels(assignments_test_km[0], brcancer['Diagnosis'][indx[1]])
- print(labels_training)
- print(labels_test)
+labels_training = create_labels(assignments_km[0], brcancer['Diagnosis'][indx[0]])
+labels_test = create_labels(assignments_test_km[0], brcancer['Diagnosis'][indx[1]])
+print(labels_training)
+print(labels_test)
 
 f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 
@@ -302,30 +292,6 @@ ax1.set_title('k-means clustering plot')
 ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
 ax2.set_title('Actual clusters')
 
-def plot_WCSS_km(km_models, sample):
-    fig, ax = plt.subplots(1, 2, figsize=(12,5))
-    
-    ## Plot WCSS
-    wcss = [mod.inertia_ for mod in km_models]
-    print(wcss)
-    n_clusts = [x+1 for x in range(1,len(wcss) + 1)]
-    ax[0].bar(n_clusts, wcss)
-    ax[0].set_xlabel('Number of clusters')
-    ax[0].set_ylabel('WCSS')
-    
-    ## Plot BCSS
-    tss = np.sum(sample[:,0:1]**2, axis = 0)
-    print(tss)
-    ## Compute BCSS as TSS - WCSS
-    bcss = np.concatenate([tss - x for x in wcss]).ravel()
-    ax[1].bar(n_clusts, bcss)
-    ax[1].set_xlabel('Number of clusters')
-    ax[1].set_ylabel('BCSS')
-    plt.show()
-    
-
-plot_WCSS_km(km_models, Comps)
-
 
 def plot_sillohette(samples, assignments, x_lab = 'Number of clusters', start =2):
     silhouette = [silhouette_score(samples[:,0:1], a) for a in assignments]
@@ -337,8 +303,7 @@ def plot_sillohette(samples, assignments, x_lab = 'Number of clusters', start =2
 
 plot_sillohette(Comps, assignments_km)
 ###########################################################
-#ARI
-from sklearn import metrics
+
 labels_true = brcancer['Diagnosis'][indx[0]]
 labels_pred = labels_training
 metrics.adjusted_rand_score(labels_true, labels_pred)
@@ -349,5 +314,76 @@ metrics.completeness_score(labels_true, labels_pred)
 metrics.v_measure_score(labels_true, labels_pred)
 metrics.fowlkes_mallows_score(labels_true, labels_pred)
 metrics.calinski_harabasz_score(Comps, labels_pred)
-from sklearn.metrics.cluster import contingency_matrix
+
 contingency_matrix(labels_true, labels_pred)
+
+#Cross validation
+
+lims=np.arange(0,568,57)
+lims=np.append(lims,569)
+print(lims)
+u=1
+ARI=np.zeros(shape=(10,4))
+AMI=np.zeros(shape=(10,4))
+NMI=np.zeros(shape=(10,4))
+H=np.zeros(shape=(10,4))
+C=np.zeros(shape=(10,4))
+VHC=np.zeros(shape=(10,4))
+FMS=np.zeros(shape=(10,4))
+CHS=np.zeros(shape=(10,4))
+SIL=np.zeros(shape=(10,4))
+for k in range(len(lims)-1):
+    n = len(lims) - 1
+    Features = np.array(brcancer_sc)
+    x_train = Features[lims[0]:lims[n],2:]
+    x_test = Features[lims[n-u]:lims[n-u+1],2:]
+    train_set = np.arange(lims[0], lims[n], 1)
+    test_set=np.arange(lims[n-u],lims[n-u+1],1)
+    train_set = np.delete(train_set, test_set, 0)
+    x_train=np.delete(x_train,test_set,0)
+    u=u+1
+    print(k)
+    
+    # Rescale numeric features,
+    scaler = preprocessing.StandardScaler().fit(x_train)
+    x_train= scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
+    pca_mod = skde.PCA()
+    pca_comps = pca_mod.fit(x_train)
+    pca_comps
+    print(pca_comps.explained_variance_ratio_)
+    print(np.sum(pca_comps.explained_variance_ratio_))
+    pca_mod_5 = skde.PCA(n_components = 5)
+    pca_mod_5.fit(x_train)
+    Comps = pca_mod_5.transform(x_train)
+    Comps.shape
+    Comps_test=pca_mod_5.transform(x_test)
+#    km_models = []
+#    assignments_km = []
+#    assignments_test_km = []
+    for i in range(2,6):
+        print('For k: {}'.format(i))
+        kmeans= KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001, 
+            precompute_distances='auto', verbose=0, random_state=None, copy_x=True, n_jobs=1, algorithm='auto')
+        assignments_km = kmeans.fit_predict(Comps)
+        assignments_test_km = kmeans.predict(Comps_test)
+#        km_models.append(kmeans)
+#        assignments_km.append(assignments_km)
+#        assignments_test_km.append(test_values)
+     
+         #Training
+#        labels_training = create_labels(assignments_km, brcancer['Diagnosis'][train_set],i)
+#        labels_test = create_labels(assignments_test_km, brcancer['Diagnosis'][test_set],i)
+#        print(labels_training)
+#        print(labels_test)
+        labels_true = brcancer['Diagnosis'][train_set]
+        labels_pred = assignments_km
+        ARI[k,i-2]=metrics.adjusted_rand_score(labels_true, labels_pred)
+        AMI[k,i-2]=metrics.adjusted_mutual_info_score(labels_true, labels_pred)  
+        NMI[k,i-2]=metrics.normalized_mutual_info_score(labels_true, labels_pred)
+        H[k,i-2]=metrics.homogeneity_score(labels_true, labels_pred)
+        C[k,i-2]=metrics.completeness_score(labels_true, labels_pred)
+        VHC[k,i-2]=metrics.v_measure_score(labels_true, labels_pred)
+        FMS[k,i-2]=metrics.fowlkes_mallows_score(labels_true, labels_pred)
+        CHS[k,i-2]=metrics.calinski_harabasz_score(Comps, labels_pred)
+        SIL[k,i-2]=metrics.silhouette_score(Comps,labels_pred)
