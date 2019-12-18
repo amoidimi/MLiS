@@ -183,11 +183,6 @@ for col in cols:
 
 brcancer_sc.replace([np.inf, -np.inf], 0, inplace=True)
 
-brcancer_sc=brcancer
-for col in cols:
-    if (col != 'mean_symmetry' and col != 'mean_smoothness' and col!= 'worst_smoothness'):
-        brcancer_sc[col] = np.cbrt(brcancer[col])
-
 nr.seed(9988)
 Features = np.array(brcancer_sc)
 indx = range(Features.shape[0])
@@ -319,19 +314,21 @@ contingency_matrix(labels_true, labels_pred)
 
 #Cross validation
 
+k_values = [2, 3, 4, 5, 6]
+nk = len(k_values)
 lims=np.arange(0,568,57)
 lims=np.append(lims,569)
 print(lims)
 u=1
-ARI=np.zeros(shape=(10,4))
-AMI=np.zeros(shape=(10,4))
-NMI=np.zeros(shape=(10,4))
-H=np.zeros(shape=(10,4))
-C=np.zeros(shape=(10,4))
-VHC=np.zeros(shape=(10,4))
-FMS=np.zeros(shape=(10,4))
-CHS=np.zeros(shape=(10,4))
-SIL=np.zeros(shape=(10,4))
+ARI=np.zeros(shape=(10, nk))
+AMI=np.zeros(shape=(10,nk))
+NMI=np.zeros(shape=(10,nk))
+H=np.zeros(shape=(10,nk))
+C=np.zeros(shape=(10,nk))
+VHC=np.zeros(shape=(10,nk))
+FMS=np.zeros(shape=(10,nk))
+CHS=np.zeros(shape=(10,nk))
+SIL=np.zeros(shape=(10,nk))
 for k in range(len(lims)-1):
     n = len(lims) - 1
     Features = np.array(brcancer_sc)
@@ -348,38 +345,22 @@ for k in range(len(lims)-1):
     scaler = preprocessing.StandardScaler().fit(x_train)
     x_train= scaler.transform(x_train)
     x_test = scaler.transform(x_test)
-    pca_mod = skde.PCA()
-    pca_comps = pca_mod.fit(x_train)
-    pca_comps
-    print(pca_comps.explained_variance_ratio_)
-    print(np.sum(pca_comps.explained_variance_ratio_))
     pca_mod_5 = skde.PCA(n_components = 5)
     pca_mod_5.fit(x_train)
     Comps = pca_mod_5.transform(x_train)
-    Comps.shape
     Comps_test=pca_mod_5.transform(x_test)
-#    km_models = []
-#    assignments_km = []
-#    assignments_test_km = []
-    for i in range(2,6):
+
+    for i in k_values:
         print('For k: {}'.format(i))
-        kmeans= KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001, 
+        kmeans= KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001,
             precompute_distances='auto', verbose=0, random_state=None, copy_x=True, n_jobs=1, algorithm='auto')
         assignments_km = kmeans.fit_predict(Comps)
         assignments_test_km = kmeans.predict(Comps_test)
-#        km_models.append(kmeans)
-#        assignments_km.append(assignments_km)
-#        assignments_test_km.append(test_values)
-     
-         #Training
-#        labels_training = create_labels(assignments_km, brcancer['Diagnosis'][train_set],i)
-#        labels_test = create_labels(assignments_test_km, brcancer['Diagnosis'][test_set],i)
-#        print(labels_training)
-#        print(labels_test)
+
         labels_true = brcancer['Diagnosis'][train_set]
         labels_pred = assignments_km
         ARI[k,i-2]=metrics.adjusted_rand_score(labels_true, labels_pred)
-        AMI[k,i-2]=metrics.adjusted_mutual_info_score(labels_true, labels_pred)  
+        AMI[k,i-2]=metrics.adjusted_mutual_info_score(labels_true, labels_pred)
         NMI[k,i-2]=metrics.normalized_mutual_info_score(labels_true, labels_pred)
         H[k,i-2]=metrics.homogeneity_score(labels_true, labels_pred)
         C[k,i-2]=metrics.completeness_score(labels_true, labels_pred)
