@@ -24,7 +24,6 @@ from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from mpl_toolkits import mplot3d
 
-count()
 brcancer = pd.read_csv('data.csv')
 cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness',
         'mean_compactness', 'mean_concavity', 'mean_concave_points', 'mean_symmetry', 'mean_fractal_dimension',
@@ -245,9 +244,31 @@ for i in range(2,5):
     assignments_km.append(assignments_km2)
     assignments_test_km.append(test_values)
 
+ def create_labels(assignments_km, brcancer_indx):
+     labels = np.zeros_like(assignments_km)
+     for i in range(2):
+         mask = (assignments_km == i)
+         digits_mask = brcancer_indx[mask]
+         labels[mask] = mode(digits_mask)[0]
+     return labels
+ 
+ #Training
+ labels_training = create_labels(assignments_km[0], brcancer['Diagnosis'][indx[0]])
+ labels_test = create_labels(assignments_test_km[0], brcancer['Diagnosis'][indx[1]])
+ print(labels_training)
+ print(labels_test)
+
 f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 
-ax1.scatter(Comps_test[:,0],Comps_test[:,1],c=assignments_test_km[0] , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.scatter(Comps[:,0],Comps[:,1],c=labels_training , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.set_title('k-means clustering plot')
+
+ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
+ax2.set_title('Actual clusters')
+
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+ax1.scatter(Comps_test[:,0],Comps_test[:,1],c=labels_test , cmap = "jet", edgecolor = "None", alpha=0.35)
 ax1.set_title('k-means clustering plot')
 
 ax2.scatter(Comps_test[:,0],Comps_test[:,1],c = brcancer['Diagnosis'][indx[1]], cmap = "jet", edgecolor = "None", alpha=0.35)
@@ -263,16 +284,17 @@ def plot_clusters(sample, assignment):
     plt.title('Sample data')
     plt.show()
 
-plot_clusters(Comps, assignments_km[0])
-plot_clusters(Comps_test, assignments_test_km[0])
+plot_clusters(Comps, labels_training)
+plot_clusters(Comps_test,labels_test)
 
 agglomerative_2 = AgglomerativeClustering(n_clusters=2)
 assignments_ag2 = agglomerative_2.fit_predict(Comps)
+labels_training_ag=create_labels(assignments_ag2,brcancer['Diagnosis'][indx[0]])
 plot_clusters(Comps, assignments_ag2)
 
 f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 
-ax1.scatter(Comps[:,0],Comps[:,1],c=assignments_ag2 , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.scatter(Comps[:,0],Comps[:,1],c=labels_training_ag , cmap = "jet", edgecolor = "None", alpha=0.35)
 ax1.set_title('k-means clustering plot')
 
 ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
@@ -313,4 +335,17 @@ def plot_sillohette(samples, assignments, x_lab = 'Number of clusters', start =2
 
 plot_sillohette(Comps, assignments_km)
 ###########################################################
-
+#ARI
+from sklearn import metrics
+labels_true = brcancer['Diagnosis'][indx[0]]
+labels_pred = labels_training
+metrics.adjusted_rand_score(labels_true, labels_pred)
+metrics.adjusted_mutual_info_score(labels_true, labels_pred)  
+metrics.normalized_mutual_info_score(labels_true, labels_pred)
+metrics.homogeneity_score(labels_true, labels_pred)
+metrics.completeness_score(labels_true, labels_pred)
+metrics.v_measure_score(labels_true, labels_pred)
+metrics.fowlkes_mallows_score(labels_true, labels_pred)
+metrics.calinski_harabasz_score(Comps, labels_pred)
+from sklearn.metrics.cluster import contingency_matrix
+contingency_matrix(labels_true, labels_pred)
