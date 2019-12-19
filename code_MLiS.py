@@ -235,6 +235,14 @@ for i in range(n_pcs):
     idx = 'PCA'+ str(i);
     pca_comp_values[idx] = most_important_features(comps)
 
+# PCA heat plot
+plt.matshow(pca_mod_5.components_,cmap='coolwarm')
+plt.yticks([0,1,2,3,4],['1st Comp','2nd Comp','3rd Comp', '4th comp', '5th comp'],fontsize=9)
+plt.colorbar()
+plt.xticks(range(len(cols)),cols,rotation=65,ha='left',fontsize=9)
+plt.tight_layout()
+plt.show()
+
 # PCA plot
 # Setting the positions and width for the bars
 pos = list(range(len(pca_comp_values['PCA0'])))
