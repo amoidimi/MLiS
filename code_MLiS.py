@@ -21,7 +21,6 @@ import sklearn.decomposition as skde
 from sklearn.cluster import KMeans, AgglomerativeClustering
 from sklearn.metrics import silhouette_score
 from sklearn.metrics.cluster import contingency_matrix
-from sklearn.model_selection import cross_val_score
 
 brcancer = pd.read_csv('data.csv')
 cols = ['mean_radius', 'mean_texture', 'mean_perimeter', 'mean_area', 'mean_smoothness',
@@ -324,7 +323,7 @@ ax.set_xticks([p + 1.5 * width for p in pos])
 ax.set_xticklabels(cols[most_important[i]] for i in range(0, len(most_important)))
 
 # Setting the x-axis and y-axis limits
-plt.xlim(min(pos) - width, max(pos) + width * 4)
+plt.xlim(min(pos) - width, max(pos) + width * 5)
 plt.ylim([0, max(pca_comp_values['PCA0'] + pca_comp_values['PCA1'] + pca_comp_values['PCA2'] + pca_comp_values['PCA3'] + pca_comp_values['PCA4'])])
 
 # Adding the legend and showing the plot
@@ -332,18 +331,17 @@ plt.legend(['PCA0', 'PCA1', 'PCA2', 'PCA3', 'PCA4'], loc='upper left')
 plt.grid()
 plt.show()
 
-
 km_models = []
 assignments_km = []
 assignments_test_km = []
 for i in range(2,5):
     
-    kmeans_2 = KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001, 
+    kmeans= KMeans(n_clusters=i, init='k-means++', n_init=10, max_iter=300, tol=0.0001, 
         precompute_distances='auto', verbose=0, random_state=None, copy_x=True, n_jobs=1, algorithm='auto')
-    assignments_km2 = kmeans_2.fit_predict(Comps)
-    test_values = kmeans_2.predict(Comps_test)
-    km_models.append(kmeans_2)
-    assignments_km.append(assignments_km2)
+    assignments= kmeans.fit_predict(Comps)
+    test_values = kmeans.predict(Comps_test)
+    km_models.append(kmeans)
+    assignments_km.append(assignments)
     assignments_test_km.append(test_values)
 
 def create_labels(assign,brcancer_indx):
@@ -389,20 +387,6 @@ def plot_clusters(sample, assignment):
 
 plot_clusters(Comps, labels_training)
 plot_clusters(Comps_test,labels_test)
-
-agglomerative_2 = AgglomerativeClustering(n_clusters=2)
-assignments_ag2 = agglomerative_2.fit_predict(Comps)
-labels_training_ag=create_labels(assignments_ag2,brcancer['Diagnosis'][indx[0]])
-plot_clusters(Comps, assignments_ag2)
-
-f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
-
-ax1.scatter(Comps[:,0],Comps[:,1],c=labels_training_ag , cmap = "jet", edgecolor = "None", alpha=0.35)
-ax1.set_title('k-means clustering plot')
-
-ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
-ax2.set_title('Actual clusters')
-
 
 def plot_sillohette(samples, assignments, x_lab = 'Number of clusters', start =2):
     silhouette = [silhouette_score(samples[:,0:1], a) for a in assignments]
@@ -526,3 +510,167 @@ plt.show()
 
 # plt.plot(k_values, performance_scores['SIL'], 'r', k_values, performance_scores['FMS'], 'b', k_values, performance_scores['ARI'], 'g')
 # plt.show()
+
+############################################################
+#hierarchical
+
+agg_models = []
+assignments_agg = []
+for i in range(2,5):
+    
+    agg=AgglomerativeClustering(n_clusters=i)
+    assignments= agg.fit_predict(Comps)
+    agg_models.append(agg)
+    assignments_agg.append(assignments)
+    
+plot_clusters(Comps, assignments_agg[0])
+labels_training_agg = create_labels(assignments_agg[0], brcancer['Diagnosis'][indx[0]])
+
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
+
+ax1.scatter(Comps[:,0],Comps[:,1],c=labels_training_agg , cmap = "jet", edgecolor = "None", alpha=0.35)
+ax1.set_title('Hierarchical clustering plot')
+
+ax2.scatter(Comps[:,0],Comps[:,1],c = brcancer['Diagnosis'][indx[0]], cmap = "jet", edgecolor = "None", alpha=0.35)
+ax2.set_title('Actual clusters')
+plt.show()
+
+plot_sillohette(Comps, assignments_agg)
+###########################################################
+
+labels_true = brcancer['Diagnosis'][indx[0]]
+labels_pred = labels_training_agg
+metrics.adjusted_rand_score(labels_true, labels_pred)
+metrics.adjusted_mutual_info_score(labels_true, labels_pred)  
+metrics.normalized_mutual_info_score(labels_true, labels_pred)
+metrics.homogeneity_score(labels_true, labels_pred)
+metrics.completeness_score(labels_true, labels_pred)
+metrics.v_measure_score(labels_true, labels_pred)
+metrics.fowlkes_mallows_score(labels_true, labels_pred)
+metrics.calinski_harabasz_score(Comps, labels_pred)
+
+contingency_matrix(labels_true, labels_pred)
+
+#Cross validation
+
+k_values = [2, 3, 4, 5, 6]
+nk = len(k_values)
+lims=np.arange(0,568,57)
+lims=np.append(lims,569)
+print(lims)
+u=1
+ARI=np.zeros(shape=(10, nk))
+AMI=np.zeros(shape=(10,nk))
+NMI=np.zeros(shape=(10,nk))
+H=np.zeros(shape=(10,nk))
+C=np.zeros(shape=(10,nk))
+VHC=np.zeros(shape=(10,nk))
+FMS=np.zeros(shape=(10,nk))
+CHS=np.zeros(shape=(10,nk))
+SIL=np.zeros(shape=(10,nk))
+
+pca_features = []
+for k in range(len(lims)-1):
+    n = len(lims) - 1
+    Features = np.array(brcancer_sc)
+    x_train = Features[lims[0]:lims[n],:]
+    x_test = Features[lims[n-u]:lims[n-u+1],:]
+    train_set = np.arange(lims[0], lims[n], 1)
+    test_set=np.arange(lims[n-u],lims[n-u+1],1)
+    train_set = np.delete(train_set, test_set, 0)
+    x_train=np.delete(x_train,test_set,0)
+    u=u+1
+    print(k)
+    
+    # Rescale numeric features,
+    scaler = preprocessing.StandardScaler().fit(x_train)
+    x_train= scaler.transform(x_train)
+    x_test = scaler.transform(x_test)
+    pca_mod_5 = skde.PCA(n_components = 5)
+    pca_mod_5.fit(x_train)
+    Comps = pca_mod_5.transform(x_train)
+    Comps_test=pca_mod_5.transform(x_test)
+
+    for i in k_values:
+        print('For k: {}'.format(i))
+        agg= AgglomerativeClustering(n_clusters=i)
+        assignments_agg = agg.fit_predict(Comps)
+
+        labels_true = brcancer['Diagnosis'][train_set]
+        labels_pred = assignments_agg
+        ARI[k,i-2]=metrics.adjusted_rand_score(labels_true, labels_pred)
+        AMI[k,i-2]=metrics.adjusted_mutual_info_score(labels_true, labels_pred)
+        NMI[k,i-2]=metrics.normalized_mutual_info_score(labels_true, labels_pred)
+        H[k,i-2]=metrics.homogeneity_score(labels_true, labels_pred)
+        C[k,i-2]=metrics.completeness_score(labels_true, labels_pred)
+        VHC[k,i-2]=metrics.v_measure_score(labels_true, labels_pred)
+        FMS[k,i-2]=metrics.fowlkes_mallows_score(labels_true, labels_pred)
+        CHS[k,i-2]=metrics.calinski_harabasz_score(Comps, labels_pred)
+        SIL[k,i-2]=metrics.silhouette_score(Comps[:,0:1],labels_pred)
+
+performance_scores = {}
+
+def calculate_mean(scores):
+    means = []
+    for i in range(0,5):
+        mean = np.mean(scores[:, i])
+        means.append(mean)
+    return means
+
+
+performance_scores['ARI'] = calculate_mean(ARI)
+performance_scores['AMI'] = calculate_mean(AMI)
+performance_scores['NMI'] = calculate_mean(NMI)
+performance_scores['H'] = calculate_mean(H)
+performance_scores['C'] = calculate_mean(C)
+performance_scores['VHC'] = calculate_mean(VHC)
+performance_scores['FMS'] = calculate_mean(FMS)
+performance_scores['CHS'] = calculate_mean(CHS)
+performance_scores['SIL'] = calculate_mean(SIL)
+
+df=pd.DataFrame({'x': k_values, 'SIL': performance_scores['SIL'],
+                 'FMS': performance_scores['FMS'],
+                 'ARI': performance_scores['ARI'],
+                 'NMI': performance_scores['NMI']})
+plt.style.use('seaborn-darkgrid')
+palette = plt.get_cmap('Set1')
+
+num=0
+for column in df.drop('x', axis=1):
+    num+=1
+    plt.plot(df['x'], df[column], marker='', color=palette(num), linewidth=1, alpha=0.9, label=column)
+plt.legend(loc = 1)
+plt.title("Average Performance scores after cross validation", loc='left', fontsize=12, fontweight=0, color='black')
+plt.xlabel("Number of clusters")
+plt.ylabel("Performance Score")
+plt.show()
+#############################################################
+#from sklearn.cluster import AffinityPropagation
+#import matplotlib.pyplot as plt
+#
+## Setup Affinity Propagation
+#
+#aff = AffinityPropagation(damping=0.7, max_iter=10000, convergence_iter=100, 
+#                          copy=True, preference=None, affinity='euclidean', verbose=False)
+#assignments_aff = aff.fit_predict(Comps)
+#test_values_aff = aff.predict(Comps_test)
+#centers=aff.cluster_centers_indices_
+#n_clusters_aff=len(centers)
+#labels=aff.labels_
+#
+#print('Estimated number of clusters: %d' % n_clusters_aff)
+## Plot exemplars
+#
+#plt.close('all')
+#plt.figure(1)
+#plt.clf()
+#
+#for k, col in zip(range(n_clusters_aff), palette):
+#    class_members = labels == k
+#    cluster_center = Comps[centers[k]]
+#    plt.plot(Comps[class_members, 0], Comps[class_members, 1], palette + '.')
+#    plt.plot(cluster_center[0], cluster_center[1], 'o', markerfacecolor=palette, markeredgecolor='k', markersize=14)
+#    for x in Comps[class_members]:
+#        plt.plot([cluster_center[0], x[0]], [cluster_center[1], x[1]], col)
+#
+#plt.show()
