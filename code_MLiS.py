@@ -16,6 +16,7 @@ from sklearn import preprocessing
 import sklearn.model_selection as ms
 import sklearn.decomposition as skde
 from sklearn.cluster import KMeans, AgglomerativeClustering
+import random
 
 """ 
 Cleaning the dataset
@@ -250,8 +251,11 @@ Performs cross validation on the dataset
 def cross_valid(n_folds,n_clusters,data,data_transformed,algo):
     performance_scores = {}
     nk = len(n_clusters)
-    lims=np.arange(0,data_transformed.shape[0]-1,57)
-    lims=np.append(lims,data_transformed.shape[0])
+    random_order=np.arange(0,brcancer_sc.shape[0]+1,1)
+    random.seed(1243)
+    random.shuffle(random_order)
+    lims=np.arange(0,random_order[0]-1,57)
+    lims=np.append(lims,random_order[0])
     print(lims)
     u=1
     ARI=np.zeros(shape=(n_folds, nk))
@@ -263,7 +267,6 @@ def cross_valid(n_folds,n_clusters,data,data_transformed,algo):
     FMS=np.zeros(shape=(n_folds,nk))
     CHS=np.zeros(shape=(n_folds,nk))
     SIL=np.zeros(shape=(n_folds,nk))
-    
     for k in range(len(lims)-1):
         n = len(lims) - 1
         Features = np.array(data_transformed)
