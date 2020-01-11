@@ -48,7 +48,7 @@ def plot_density_hist(brcancer, cols, bins, name):
         sns.distplot(brcancer[col], bins=bins, rug=True, hist=True)
         plt.title('Histogram of ' + col)
         plt.xlabel(col)
-        plt.ylabel('Number of patients')
+        plt.ylabel('Count')
         plt.show()
         fig.savefig(name + col + '.png')
 
@@ -108,7 +108,7 @@ def calculate_mean(scores):
 """ 
 Plots the following:
     - the heat map of the contribution of each feature for different PCA components
-    - the barplot of the contrubution of the 3 most important features
+    - the bar plot of the contribution of the 3 most important features
     (each from the first and the second principal components) for different PCA components
 :param pca_mod: the estimated PCA model on the training data
 """
@@ -182,7 +182,6 @@ def cluster_plot(Comps,Comps_test,indx,algo):
     
      #Training
     labels_training = create_labels(assignments, brcancer['Diagnosis'][indx[0]])
-    print(labels_training)
     f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
     
     ax1.scatter(Comps[:,0],Comps[:,1],c=labels_training , cmap = "jet", edgecolor = "None", alpha=0.35)
@@ -194,7 +193,6 @@ def cluster_plot(Comps,Comps_test,indx,algo):
     
     if algo=='kmeans':
         labels_test = create_labels(assignments_test, brcancer['Diagnosis'][indx[1]])
-        print(labels_test)
         f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
         
         ax1.scatter(Comps_test[:,0],Comps_test[:,1],c=labels_test , cmap = "jet", edgecolor = "None", alpha=0.35)
@@ -238,14 +236,9 @@ def initial_run(n_comps,test_sz):
     x_train[:, :] = scaler.transform(x_train[:,:])
     x_test[:, :] = scaler.transform(x_test[:, :])
     
-    print(x_train.shape)
-    #plot_density_hist(x_train,cols, bins=20, hist=True, name='scaled_dens_')
-    
     pca_mod = skde.PCA()
     pca_comps = pca_mod.fit(x_train)
     pca_comps
-    print(pca_comps.explained_variance_ratio_)
-    print(np.sum(pca_comps.explained_variance_ratio_))
     
     plot_explained_variance(pca_comps)
     pca_mod = skde.PCA(n_components = n_comps)
@@ -276,7 +269,6 @@ def cross_valid(n_folds,n_clusters,data,data_transformed,algo):
     random.shuffle(random_order)
     lims=np.arange(0,random_order[0]-1,int(round(brcancer_sc.shape[0]/n_folds)))
     lims=np.append(lims,random_order[0])
-    print(lims)
     u=1
     ARI=np.zeros(shape=(n_folds, nk))
     AMI=np.zeros(shape=(n_folds,nk))
@@ -392,7 +384,7 @@ for col in cols:
 brcancer_sc.replace([np.inf, -np.inf], 0, inplace=True)
 
 #Plot the histogram to examine the changes after transformation
-#plot_density_hist(brcancer,cols, bins = 20, name='density_')
+#plot_density_hist(brcancer,cols, bins = 20, name='density_bf_')
 #plot_density_hist(brcancer_sc,cols, bins = 20, name='density_')
 
 #Perform the initial run to analyze two clusters
