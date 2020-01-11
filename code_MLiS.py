@@ -119,7 +119,7 @@ def initial_plots(pca_mod):
     # PCA heat plot
     plt.matshow(pca_mod.components_,cmap='coolwarm')
     plt.yticks([0,1,2,3,4],['1st Comp','2nd Comp','3rd Comp', '4th comp', '5th comp'],fontsize=9)
-    plt.colorbar()
+    plt.colorbar(orientation="horizontal")
     plt.xticks(range(len(cols)),cols,rotation=65,ha='left',fontsize=9)
     plt.tight_layout()
     plt.show()
